@@ -5,7 +5,7 @@ import numpy as np
 import random
 from copy import deepcopy
 
-from transformers import AdamW
+from torch.optim import AdamW
 from data.alchemy.parseScone import loadData
 import os
 import json

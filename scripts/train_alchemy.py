@@ -5,7 +5,7 @@ from transformers import BartForConditionalGeneration, T5ForConditionalGeneratio
 from torch import nn
 import numpy as np
 
-from transformers import AdamW
+from torch.optim import AdamW
 from itertools import chain
 import os
 import random

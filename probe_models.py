@@ -8,7 +8,7 @@ from torch import nn
 import numpy as np
 import random
 
-from transformers import AdamW
+from torch.optim import AdamW
 from transformers.models.bart.modeling_bart import BartAttention as Attention
 from transformers.modeling_outputs import BaseModelOutput, ModelOutput
 from transformers import PreTrainedModel

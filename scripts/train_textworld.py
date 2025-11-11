@@ -8,7 +8,7 @@ import textworld
 from transformers import BartConfig, T5Config
 from transformers import BartTokenizerFast, T5TokenizerFast
 from transformers import BartForConditionalGeneration, T5ForConditionalGeneration
-from transformers import AdamW
+from torch.optim import AdamW
 from transformers.models.bart.modeling_bart import BartEncoder
 
 import argparse

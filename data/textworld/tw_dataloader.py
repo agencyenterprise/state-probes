@@ -190,7 +190,7 @@ class TWEntitySetDataset(TWDataset):
         If not found, returns `None`
         """
         if entity == "player": entity = "you"
-        candidates = [f'[ |\n|\'|"][{entity[0].lower()}|{entity[0].upper()}]{entity[1:].lower()}[ |\n|,|\.|!|\?|\'|"]']
+        candidates = [f'[ |\n|\'|"][{entity[0].lower()}|{entity[0].upper()}]{entity[1:].lower()}[ |\n|,|\\.|!|\\?|\'|"]']
         candidates.append(f'-= {entity.title()} =-')
         all_mention_locations = None
         for cand in candidates:
