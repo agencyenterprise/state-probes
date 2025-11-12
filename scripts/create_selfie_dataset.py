@@ -59,6 +59,37 @@ def find_mention_in_context(entity, context):
     return False
 
 
+def property_mentioned_in_context(property_name, context):
+    """
+    Check if a property or its opposite is mentioned in the context text.
+    
+    This ensures we only create samples where the property state has been
+    revealed (not just inferred from absence of a fact).
+    
+    Args:
+        property_name: Property to check (e.g., 'locked', 'open')
+        context: The context text to search
+        
+    Returns:
+        True if any keywords related to the property appear in context
+    """
+    context_lower = context.lower()
+    
+    # Define keywords that indicate the property was revealed
+    # Include both the property and its opposite to catch any mention
+    property_keywords = {
+        'open': ['open', 'opened', 'opening'],
+        'closed': ['closed', 'close', 'closing', 'shut'],
+        'locked': ['locked', 'lock', 'locking', 'unlocked', 'unlock', 'unlocking'],
+        'unlocked': ['locked', 'lock', 'locking', 'unlocked', 'unlock', 'unlocking'],
+        'eaten': ['eat', 'eaten', 'eating', 'ate', 'consumed', 'consume'],
+        'not eaten': ['eat', 'eaten', 'eating', 'ate', 'consumed', 'consume'],
+    }
+    
+    keywords = property_keywords.get(property_name, [])
+    return any(keyword in context_lower for keyword in keywords)
+
+
 def extract_entity_properties(facts):
     """
     Extract unary properties for each entity from structured facts.
@@ -271,6 +302,11 @@ def process_trace(trace_txt_path, trace_states_path):
                 if negative_state in TRACKED_PROPERTIES and negative_state in properties:
                     # Both states present simultaneously - data quality issue, skip
                     print(f"Warning: Entity '{entity_name}' has both '{positive_state}' and '{negative_state}' - skipping")
+                    continue
+                
+                # Skip if property hasn't been mentioned in context yet
+                # This prevents samples where the state is only inferred from absence
+                if not property_mentioned_in_context(positive_state, context):
                     continue
                 
                 samples.append({
