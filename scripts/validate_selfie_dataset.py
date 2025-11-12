@@ -32,12 +32,43 @@ PROPERTY_OPPOSITES = {
 ALL_VALID_STATES = set(PROPERTY_OPPOSITES.keys()) | set(PROPERTY_OPPOSITES.values())
 
 
-def load_samples(jsonl_path: str, num_samples: int = None) -> List[Dict]:
-    """Load samples from JSONL file."""
+def load_samples(jsonl_path: str, num_samples: int = None, property_filter: str = None) -> List[Dict]:
+    """
+    Load samples from JSONL file.
+    
+    Args:
+        jsonl_path: Path to the JSONL file
+        num_samples: Number of samples to return (None for all)
+        property_filter: Filter samples by property (e.g., 'open', 'locked', 'eaten')
+    """
     samples = []
     with open(jsonl_path, 'r') as f:
         for line in f:
-            samples.append(json.loads(line))
+            sample = json.loads(line)
+            
+            # Filter by property if specified
+            if property_filter:
+                # Check if either positive or negative state matches the property or its opposite
+                pos_state = sample['positive_state']
+                neg_state = sample['negative_state']
+                
+                # Normalize property filter to handle both states in a pair
+                if property_filter in PROPERTY_OPPOSITES:
+                    filter_pair = {property_filter, PROPERTY_OPPOSITES[property_filter]}
+                else:
+                    # If the filter isn't in the dict, it might be a value (like 'unlocked')
+                    # Find its key
+                    filter_pair = {property_filter}
+                    for key, val in PROPERTY_OPPOSITES.items():
+                        if val == property_filter:
+                            filter_pair.add(key)
+                            break
+                
+                # Include sample if it uses this property pair
+                if pos_state in filter_pair or neg_state in filter_pair:
+                    samples.append(sample)
+            else:
+                samples.append(sample)
     
     if num_samples and num_samples < len(samples):
         samples = random.sample(samples, num_samples)
@@ -179,6 +210,13 @@ def main():
         help='Random seed for sample selection'
     )
     parser.add_argument(
+        '--property',
+        type=str,
+        default=None,
+        choices=['open', 'closed', 'locked', 'unlocked', 'eaten', 'not eaten'],
+        help='Filter samples by property type (e.g., "open" for open/closed pairs)'
+    )
+    parser.add_argument(
         '--show-all-failures',
         action='store_true',
         help='Show all failure cases (default: first 10)'
@@ -208,10 +246,16 @@ def main():
     # Load samples
     print(f"\n{'='*60}")
     print(f"Loading samples from {args.split} split")
+    if args.property:
+        print(f"Filtering by property: {args.property}")
     print(f"{'='*60}")
     
-    samples = load_samples(str(jsonl_path), args.num_samples)
-    print(f"Loaded {len(samples)} samples")
+    samples = load_samples(str(jsonl_path), args.num_samples, args.property)
+    
+    if args.property:
+        print(f"Loaded {len(samples)} samples with property '{args.property}'")
+    else:
+        print(f"Loaded {len(samples)} samples")
     
     # Validate samples
     print(f"\n{'='*60}")
@@ -286,10 +330,8 @@ def main():
             print(f"Entity: {sample['entity']}")
             print(f"Expected: {failure['expected']}")
             print(f"Predicted: {failure['predicted']}")
-            print(f"\nContext (first 500 chars):")
-            print(sample['context'][:500])
-            if len(sample['context']) > 500:
-                print("...")
+            print(f"\nContext (full):")
+            print(sample['context'])
             print()
     
     # Summary
