@@ -18,19 +18,17 @@ from collections import defaultdict
 
 # Properties to track and their opposites
 # Note: We only track properties that appear explicitly in TextWorld facts.
-# Some properties (like 'unlocked', 'not eaten') are implicit (absence of the positive).
+# Some properties (like 'not eaten') are implicit (absence of the positive).
 PROPERTY_OPPOSITES = {
     'open': 'closed',       # Explicit opposite in data (mutually exclusive)
     'closed': 'open',       # Explicit opposite in data (mutually exclusive)
-    'locked': 'unlocked',   # 'locked' is explicit; 'unlocked' is implicit (absence)
-    'unlocked': 'locked',   # Add reverse mapping for implicit state
     'eaten': 'not eaten',   # 'eaten' is explicit; 'not eaten' is implicit (absence)
     'not eaten': 'eaten',   # Add reverse mapping for implicit state
 }
 
 # We only track properties that appear explicitly in the data
 # (the keys, not the implicit opposites that are values)
-TRACKED_PROPERTIES = set(['open', 'closed', 'locked', 'eaten'])
+TRACKED_PROPERTIES = set(['open', 'closed', 'eaten'])
 
 
 def find_mention_in_context(entity, context):
@@ -80,8 +78,6 @@ def property_mentioned_in_context(property_name, context):
     property_keywords = {
         'open': ['open', 'opened', 'opening'],
         'closed': ['closed', 'close', 'closing', 'shut'],
-        'locked': ['locked', 'lock', 'locking', 'unlocked', 'unlock', 'unlocking'],
-        'unlocked': ['locked', 'lock', 'locking', 'unlocked', 'unlock', 'unlocking'],
         'eaten': ['eat', 'eaten', 'eating', 'ate', 'consumed', 'consume'],
         'not eaten': ['eat', 'eaten', 'eating', 'ate', 'consumed', 'consume'],
     }
@@ -187,10 +183,9 @@ def process_trace(trace_txt_path, trace_states_path):
     if len(states) == 0 or len(all_actions) < 2:
         return samples
     
-    # FIRST PASS: Identify entities that ever get "eaten" or "locked"
+    # FIRST PASS: Identify entities that ever get "eaten"
     # This allows us to retroactively assign implicit opposite states
     entities_ever_eaten = set()
-    entities_ever_locked = set()
     all_mentioned_entities = set()  # Track all entities that appear in any state
     
     for state in states:
@@ -201,8 +196,6 @@ def process_trace(trace_txt_path, trace_states_path):
             all_mentioned_entities.add(entity_name)
             if 'eaten' in properties:
                 entities_ever_eaten.add(entity_name)
-            if 'locked' in properties:
-                entities_ever_locked.add(entity_name)
     
     
     # Create progressive contexts and samples
@@ -246,7 +239,7 @@ def process_trace(trace_txt_path, trace_states_path):
                 if entity_name:
                     all_entities_in_state.add(entity_name)
         
-        # AUGMENT with implicit opposite states for entities that ever get eaten/locked
+        # AUGMENT with implicit opposite states for entities that ever get eaten
         # This ensures we have balanced positive/negative examples
         
         # First, check entities already in entity_properties
@@ -256,31 +249,15 @@ def process_trace(trace_txt_path, trace_states_path):
             # If entity is ever eaten, add "not eaten" when it's not currently eaten
             if entity_name in entities_ever_eaten and 'eaten' not in props:
                 entity_properties[entity_name].add('not eaten')
-            
-            # If entity is ever locked, add "unlocked" when it's not currently locked
-            if entity_name in entities_ever_locked and 'locked' not in props:
-                entity_properties[entity_name].add('unlocked')
         
         # Second, check entities that exist but have NO tracked properties
         # (e.g., food items that haven't been eaten yet)
         for entity_name in all_entities_in_state:
             if entity_name not in entity_properties:
                 # Entity exists but has no properties yet - add implicit opposites
-                needs_entry = False
-                new_props = set()
-                
                 if entity_name in entities_ever_eaten:
                     # Entity will eventually be eaten, so it's currently "not eaten"
-                    new_props.add('not eaten')
-                    needs_entry = True
-                
-                if entity_name in entities_ever_locked:
-                    # Entity will eventually be locked, so it's currently "unlocked"
-                    new_props.add('unlocked')
-                    needs_entry = True
-                
-                if needs_entry:
-                    entity_properties[entity_name] = new_props
+                    entity_properties[entity_name] = {'not eaten'}
         
         # Create samples for each entity with tracked properties
         for entity_name, properties in entity_properties.items():
