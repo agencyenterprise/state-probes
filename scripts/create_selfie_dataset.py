@@ -18,12 +18,11 @@ from collections import defaultdict
 
 # Properties to track and their opposites
 # Note: We only track properties that appear explicitly in TextWorld facts.
-# Some properties (like 'unlocked', 'not edible') are implicit (absence of the positive).
+# Some properties (like 'unlocked', 'not eaten') are implicit (absence of the positive).
 PROPERTY_OPPOSITES = {
     'open': 'closed',       # Explicit opposite in data (mutually exclusive)
     'closed': 'open',       # Explicit opposite in data (mutually exclusive)
     'locked': 'unlocked',   # 'locked' is explicit; 'unlocked' is implicit (absence)
-    'edible': 'not edible', # 'edible' is explicit; 'not edible' is implicit (absence)
     'eaten': 'not eaten',   # 'eaten' is explicit; 'not eaten' is implicit (absence)
 }
 
