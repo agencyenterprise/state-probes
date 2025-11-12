@@ -16,15 +16,18 @@ import regex as re
 from collections import defaultdict
 
 # Properties to track and their opposites
-# Some have explicit opposites in the data, others use absence
+# Note: We only track properties that appear explicitly in TextWorld facts.
+# Some properties (like 'unlocked', 'not edible') are implicit (absence of the positive).
 PROPERTY_OPPOSITES = {
-    'open': 'closed',       # Explicit opposite in data
-    'closed': 'open',       # Explicit opposite in data
-    'locked': 'unlocked',   # Opposite is absence of locked
-    'edible': 'not edible', # Opposite is absence of edible
-    'eaten': 'not eaten',   # Opposite is absence of eaten
+    'open': 'closed',       # Explicit opposite in data (mutually exclusive)
+    'closed': 'open',       # Explicit opposite in data (mutually exclusive)
+    'locked': 'unlocked',   # 'locked' is explicit; 'unlocked' is implicit (absence)
+    'edible': 'not edible', # 'edible' is explicit; 'not edible' is implicit (absence)
+    'eaten': 'not eaten',   # 'eaten' is explicit; 'not eaten' is implicit (absence)
 }
 
+# We only track properties that appear explicitly in the data
+# (the keys, not the implicit opposites that are values)
 TRACKED_PROPERTIES = set(PROPERTY_OPPOSITES.keys())
 
 
@@ -89,8 +92,16 @@ def process_trace(trace_txt_path, trace_states_path):
     """
     Process a single trace file and generate SelfIE samples.
     
+    Creates progressive context samples where each sample includes:
+    - Growing narrative context (initial room + sequence of actions)
+    - Entity states tracked after each action
+    
+    The states file has one state per timestep:
+    - states[0] = initial state before any actions
+    - states[i] = state after executing the ith action from the trace
+    
     Returns:
-        List of (context, entity, positive_state, negative_state) tuples
+        List of dict with keys: context, entity, positive_state, negative_state
     """
     samples = []
     
@@ -114,7 +125,9 @@ def process_trace(trace_txt_path, trace_states_path):
     # Keep only gameplay content
     lines = lines[start_idx:]
     
-    # Split into action chunks (everything between ">" markers)
+    # Split into action chunks (each chunk = one "> command" + its response text)
+    # all_actions[0] will be the initial room description (before first ">")
+    # all_actions[1..n] will be actual action commands with their responses
     all_actions = []
     curr_action = []
     
@@ -142,22 +155,30 @@ def process_trace(trace_txt_path, trace_states_path):
         return samples
     
     # Create progressive contexts and samples
-    # Start from action index 2 (need some context)
-    for action_idx in range(2, min(len(all_actions), len(states))):
-        # Build context up to this point
-        context = '\n'.join(all_actions[:action_idx])
+    # Start from context_end_idx=2 to ensure we have meaningful context
+    # 
+    # INDEXING EXPLANATION:
+    # - all_actions[0] = initial room description (not an action)
+    # - all_actions[1] = first "> command" which produces states[1]
+    # - all_actions[n] = nth "> command" which produces states[n]
+    # 
+    # When context includes all_actions[0:k], the last action is all_actions[k-1]
+    # which corresponds to states[k-1] (the state AFTER that action executed)
+    #
+    for context_end_idx in range(2, min(len(all_actions), len(states))):
+        # Build context: includes all_actions[0] through all_actions[context_end_idx-1]
+        context = '\n'.join(all_actions[:context_end_idx])
         
         if not context.strip():
             continue
         
-        # Get state at this timestep
-        # states[0] = initial state (before any actions)
-        # states[i] = state after action i-1
-        state_idx = action_idx - 1
-        if state_idx >= len(states):
+        # Get the state AFTER the last action in context
+        # Last action is at index (context_end_idx - 1), so use states[context_end_idx - 1]
+        corresponding_state_idx = context_end_idx - 1
+        if corresponding_state_idx >= len(states):
             continue
             
-        current_state = states[state_idx]
+        current_state = states[corresponding_state_idx]
         
         # Extract entity properties from full_facts
         if 'full_facts' not in current_state:
@@ -179,9 +200,11 @@ def process_trace(trace_txt_path, trace_states_path):
                 positive_state = prop
                 negative_state = PROPERTY_OPPOSITES[prop]
                 
-                # For explicit opposites (open/closed), verify they're mutually exclusive
+                # For explicit opposites (like open/closed), verify mutual exclusivity
+                # Only need to check if the negative state is also explicitly tracked
+                # (implicit opposites like 'unlocked' won't appear in properties)
                 if negative_state in TRACKED_PROPERTIES and negative_state in properties:
-                    # Both states present - data quality issue, skip
+                    # Both states present simultaneously - data quality issue, skip
                     print(f"Warning: Entity '{entity_name}' has both '{positive_state}' and '{negative_state}' - skipping")
                     continue
                 
