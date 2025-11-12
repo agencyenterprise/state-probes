@@ -154,6 +154,23 @@ def process_trace(trace_txt_path, trace_states_path):
     if len(states) == 0 or len(all_actions) < 2:
         return samples
     
+    # FIRST PASS: Identify entities that ever get "eaten" or "locked"
+    # This allows us to retroactively assign implicit opposite states
+    entities_ever_eaten = set()
+    entities_ever_locked = set()
+    all_mentioned_entities = set()  # Track all entities that appear in any state
+    
+    for state in states:
+        if 'full_facts' not in state:
+            continue
+        entity_properties = extract_entity_properties(state['full_facts'])
+        for entity_name, properties in entity_properties.items():
+            all_mentioned_entities.add(entity_name)
+            if 'eaten' in properties:
+                entities_ever_eaten.add(entity_name)
+            if 'locked' in properties:
+                entities_ever_locked.add(entity_name)
+    
     # Create progressive contexts and samples
     # Start from context_end_idx=2 to ensure we have meaningful context
     # 
@@ -185,6 +202,19 @@ def process_trace(trace_txt_path, trace_states_path):
             continue
         
         entity_properties = extract_entity_properties(current_state['full_facts'])
+        
+        # AUGMENT with implicit opposite states for entities that ever get eaten/locked
+        # This ensures we have balanced positive/negative examples
+        for entity_name in list(entity_properties.keys()):
+            props = entity_properties[entity_name]
+            
+            # If entity is ever eaten, add "not eaten" when it's not currently eaten
+            if entity_name in entities_ever_eaten and 'eaten' not in props:
+                entity_properties[entity_name].add('not eaten')
+            
+            # If entity is ever locked, add "unlocked" when it's not currently locked
+            if entity_name in entities_ever_locked and 'locked' not in props:
+                entity_properties[entity_name].add('unlocked')
         
         # Create samples for each entity with tracked properties
         for entity_name, properties in entity_properties.items():
