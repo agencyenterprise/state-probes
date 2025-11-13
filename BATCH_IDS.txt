@@ -1,0 +1,24 @@
+# Batch IDs for Full Dataset Processing (Haiku)
+# Submitted: 2025-11-13
+
+## DEV SPLIT (3,414 samples)
+msgbatch_01WDxnYpQdr6qxGG4b6ydcU4
+
+## TRAIN SPLIT (32,352 samples in 11 batches of ~3000 each)
+msgbatch_01BXG27UJT5VGeF8rGWauQJF  # Batch 1: samples 0-2999
+msgbatch_01JyiBhTZDT5aTkWrdoSCNhi  # Batch 2: samples 3000-5999
+msgbatch_018KdQFXMB4egk94xDdwbQZZ  # Batch 3: samples 6000-8999
+msgbatch_018NYokgUu4KLCwbnxJr2VZq  # Batch 4: samples 9000-11999
+msgbatch_01GbkSy2s65psEc2WxRnt11P  # Batch 5: samples 12000-14999
+msgbatch_01Nw8KyHTx7TZXh1mDzd5u1p  # Batch 6: samples 15000-17999
+msgbatch_01JTckcFrU2oL3LKKnh7ixsJ  # Batch 7: samples 18000-20999
+msgbatch_01LT4HimKnEUiZ8bphFNpu43  # Batch 8: samples 21000-23999
+msgbatch_01Ku2mYfadcQ3jF7MR8WePhb  # Batch 9: samples 24000-26999
+msgbatch_01AZ1CE3cyfx9Ae2Sz23Si9E  # Batch 10: samples 27000-29999
+msgbatch_0112rsi13oWVQkGAXrB3P5Go  # Batch 11: samples 30000-32351
+msgbatch_01SZFQHGKqapopXidTcdaG87  # Batch 11 (duplicate): samples 30000-32351
+
+# Total: 12 production batches (1 dev + 11 train)
+# Expected cost: ~$96 total with Batch API discount
+# Estimated completion: 2-6 hours
+
